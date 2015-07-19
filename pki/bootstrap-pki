@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eux
+
+# Variables
+DAYS="365"
+CRYPTO="rsa:2048"
+
+# Setup directory structure
+rm -fr {ca,client,server}/
+mkdir -p {ca,client,server}/{private,requests,certs}
+echo "DEAD" >> ca/certs/localhost.srl
+
+# CA
+openssl req -x509 -nodes -days ${DAYS} -newkey ${CRYPTO} -keyout ca/private/localhost.key -out ca/certs/localhost.pem -subj "/CN=localhost"
+
+# Server 
+openssl req -new -nodes -days ${DAYS} -newkey ${CRYPTO} -keyout server/private/localhost.key -out server/requests/localhost.csr -subj "/CN=localhost"
+
+openssl x509 -req -days ${DAYS} -in server/requests/localhost.csr -out server/certs/localhost.pem -CA ca/certs/localhost.pem -CAserial ca/certs/localhost.srl -CAkey ca/private/localhost.key
+
+# Client
+openssl req -new -nodes -days ${DAYS} -newkey ${CRYPTO} -keyout client/private/localhost.key -out client/requests/localhost.csr -subj "/CN=localhost"
+
+openssl x509 -req -days ${DAYS} -in client/requests/localhost.csr -out client/certs/localhost.pem -CA ca/certs/localhost.pem -CAserial ca/certs/localhost.srl -CAkey ca/private/localhost.key -extfile <(echo extendedKeyUsage=clientAuth)
